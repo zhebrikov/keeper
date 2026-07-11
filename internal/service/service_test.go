@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -174,7 +175,7 @@ func TestRegisterDuplicate(t *testing.T) {
 		t.Fatalf("Register: %v", err)
 	}
 	_, err = svc.Register(ctx, "alice", "password2")
-	if err != domainerrors.ErrAlreadyExists {
+	if !errors.Is(err, domainerrors.ErrAlreadyExists) {
 		t.Fatalf("got %v, want ErrAlreadyExists", err)
 	}
 }
@@ -189,7 +190,7 @@ func TestLoginInvalidCredentials(t *testing.T) {
 		t.Fatalf("Register: %v", err)
 	}
 	_, err = svc.Login(ctx, "alice", "wrong")
-	if err != domainerrors.ErrInvalidCredentials {
+	if !errors.Is(err, domainerrors.ErrInvalidCredentials) {
 		t.Fatalf("got %v, want ErrInvalidCredentials", err)
 	}
 }
@@ -276,7 +277,7 @@ func TestSecretCRUD(t *testing.T) {
 		t.Fatalf("DeleteSecret: %v", err)
 	}
 	_, err = svc.GetSecret(ctx, user.ID, created.ID)
-	if err != domainerrors.ErrNotFound {
+	if !errors.Is(err, domainerrors.ErrNotFound) {
 		t.Fatalf("got %v, want ErrNotFound", err)
 	}
 }
@@ -285,7 +286,7 @@ func TestCreateSecretInvalidInput(t *testing.T) {
 	repo := newMockRepo()
 	svc := newTestService(repo)
 	_, err := svc.CreateSecret(context.Background(), service.CreateSecretInput{})
-	if err != domainerrors.ErrInvalidInput {
+	if !errors.Is(err, domainerrors.ErrInvalidInput) {
 		t.Fatalf("got %v, want ErrInvalidInput", err)
 	}
 }

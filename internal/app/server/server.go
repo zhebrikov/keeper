@@ -7,12 +7,14 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
@@ -67,22 +69,27 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("init http server: %w", err)
 	}
 
-	errCh := make(chan error, 2)
-	go func() {
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
 		if cfg.TLSCertFile != "" {
 			log.Printf("gophkeeper server listening on %s (TLS)", cfg.GRPCAddr)
 		} else {
 			log.Printf("gophkeeper server listening on %s (insecure)", cfg.GRPCAddr)
 		}
-		errCh <- grpcServer.Serve(lis)
-	}()
-	go func() {
-		log.Printf("swagger UI available at http://localhost%s/swagger/", cfg.HTTPAddr)
-		errCh <- httpServer.ListenAndServe()
-	}()
+		return grpcServer.Serve(lis)
+	})
 
-	select {
-	case <-ctx.Done():
+	g.Go(func() error {
+		log.Printf("swagger UI available at http://localhost%s/swagger/", cfg.HTTPAddr)
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		<-gctx.Done()
 		log.Println("shutting down server...")
 		grpcServer.GracefulStop()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -91,12 +98,9 @@ func Run(ctx context.Context) error {
 			return fmt.Errorf("shutdown http server: %w", err)
 		}
 		return nil
-	case err := <-errCh:
-		if err == http.ErrServerClosed {
-			return nil
-		}
-		return err
-	}
+	})
+
+	return g.Wait()
 }
 
 func newHTTPServer(ctx context.Context, httpAddr string, handler pb.GophKeeperServer) (*http.Server, error) {

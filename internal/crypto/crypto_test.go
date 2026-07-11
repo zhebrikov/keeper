@@ -82,7 +82,7 @@ func TestEncryptProducesValidBlob(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Encrypt: %v", err)
 	}
-	if len(encrypted) < 16+12+len(plaintext) {
+	if len(encrypted) < 12+len(plaintext)+16 {
 		t.Fatalf("encrypted blob too short: %d bytes", len(encrypted))
 	}
 
@@ -91,7 +91,7 @@ func TestEncryptProducesValidBlob(t *testing.T) {
 		t.Fatalf("Encrypt: %v", err)
 	}
 	if string(encrypted) == string(encrypted2) {
-		t.Fatal("expected different ciphertext due to random salt/nonce")
+		t.Fatal("expected different ciphertext due to random nonce")
 	}
 }
 

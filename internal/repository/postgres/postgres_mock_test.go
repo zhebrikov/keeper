@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"regexp"
 	"testing"
 	"time"
@@ -77,7 +78,7 @@ func TestCreateUserDuplicate(t *testing.T) {
 		WillReturnError(&pq.Error{Code: "23505"})
 
 	_, err := db.CreateUser(ctx, "alice", "hash")
-	if err != domainerrors.ErrAlreadyExists {
+	if !errors.Is(err, domainerrors.ErrAlreadyExists) {
 		t.Fatalf("got %v, want ErrAlreadyExists", err)
 	}
 }
@@ -107,7 +108,7 @@ func TestGetUserByLogin(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 
 	_, err = db.GetUserByLogin(ctx, "missing")
-	if err != domainerrors.ErrNotFound {
+	if !errors.Is(err, domainerrors.ErrNotFound) {
 		t.Fatalf("got %v, want ErrNotFound", err)
 	}
 }
@@ -258,7 +259,7 @@ func TestUpdateSecret(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 
 	_, err = db.UpdateSecret(ctx, &models.Secret{ID: secretID, UserID: userID, Version: 99})
-	if err != domainerrors.ErrConflict {
+	if !errors.Is(err, domainerrors.ErrConflict) {
 		t.Fatalf("got %v, want ErrConflict", err)
 	}
 }
@@ -330,7 +331,7 @@ func TestDeleteSecret(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	err := db.DeleteSecret(ctx, userID, uuid.New())
-	if err != domainerrors.ErrNotFound {
+	if !errors.Is(err, domainerrors.ErrNotFound) {
 		t.Fatalf("got %v, want ErrNotFound", err)
 	}
 }

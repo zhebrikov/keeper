@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -61,7 +62,7 @@ func (s *Service) Register(ctx context.Context, login, password string) (*models
 func (s *Service) Login(ctx context.Context, login, password string) (*models.TokenPair, error) {
 	user, err := s.repo.GetUserByLogin(ctx, strings.TrimSpace(login))
 	if err != nil {
-		if err == domainerrors.ErrNotFound {
+		if errors.Is(err, domainerrors.ErrNotFound) {
 			return nil, domainerrors.ErrInvalidCredentials
 		}
 		return nil, err

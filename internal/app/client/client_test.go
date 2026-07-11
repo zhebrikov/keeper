@@ -274,55 +274,6 @@ func loginTestUser(t *testing.T, env testEnv, login, password string) {
 	require.NoError(t, api.Close())
 }
 
-func TestParseSecretType(t *testing.T) {
-	tests := []struct {
-		input string
-		want  pb.SecretType
-	}{
-		{"credential", pb.SecretType_SECRET_TYPE_CREDENTIAL},
-		{"login", pb.SecretType_SECRET_TYPE_CREDENTIAL},
-		{"text", pb.SecretType_SECRET_TYPE_TEXT},
-		{"binary", pb.SecretType_SECRET_TYPE_BINARY},
-		{"card", pb.SecretType_SECRET_TYPE_CARD},
-		{"otp", pb.SecretType_SECRET_TYPE_OTP},
-		{"unknown", pb.SecretType_SECRET_TYPE_TEXT},
-		{"  TEXT  ", pb.SecretType_SECRET_TYPE_TEXT},
-	}
-	for _, tc := range tests {
-		got := parseSecretType(tc.input)
-		require.Equal(t, tc.want, got, "input=%q", tc.input)
-	}
-}
-
-func TestSecretTypeName(t *testing.T) {
-	tests := []struct {
-		typ  pb.SecretType
-		want string
-	}{
-		{pb.SecretType_SECRET_TYPE_CREDENTIAL, "credential"},
-		{pb.SecretType_SECRET_TYPE_TEXT, "text"},
-		{pb.SecretType_SECRET_TYPE_BINARY, "binary"},
-		{pb.SecretType_SECRET_TYPE_CARD, "card"},
-		{pb.SecretType_SECRET_TYPE_OTP, "otp"},
-		{pb.SecretType_SECRET_TYPE_UNSPECIFIED, "unknown"},
-	}
-	for _, tc := range tests {
-		require.Equal(t, tc.want, secretTypeName(tc.typ))
-	}
-}
-
-func TestFormatSecretData(t *testing.T) {
-	data := []byte{0x00, 0xFF}
-	require.Equal(t, string(data), formatSecretData(pb.SecretType_SECRET_TYPE_TEXT, data))
-	require.NotEqual(t, string(data), formatSecretData(pb.SecretType_SECRET_TYPE_BINARY, data))
-	require.Equal(t, "AP8=", formatSecretData(pb.SecretType_SECRET_TYPE_BINARY, data))
-}
-
-func TestFormatUnix(t *testing.T) {
-	require.Equal(t, "-", formatUnix(0))
-	require.Equal(t, "12345", formatUnix(12345))
-}
-
 func TestSessionPath(t *testing.T) {
 	cfg := config.ClientConfig{ConfigPath: "/tmp/gophkeeper"}
 	require.Equal(t, filepath.Join("/tmp/gophkeeper", "session.json"), sessionPath(cfg))

@@ -46,34 +46,9 @@ func DeriveKey(masterPassword string, salt []byte) []byte {
 }
 
 // Encrypt encrypts plaintext with AES-GCM using a pre-derived key.
-// The returned blob contains salt || nonce || ciphertext.
+// The returned blob contains nonce || ciphertext.
 func Encrypt(key, plaintext []byte) ([]byte, error) {
-	salt := make([]byte, pbkdf2SaltLen)
-	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
-		return nil, fmt.Errorf("generate salt: %w", err)
-	}
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, fmt.Errorf("create cipher: %w", err)
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, fmt.Errorf("create gcm: %w", err)
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, fmt.Errorf("generate nonce: %w", err)
-	}
-
-	ciphertext := gcm.Seal(nil, nonce, plaintext, nil)
-	result := make([]byte, 0, len(salt)+len(nonce)+len(ciphertext))
-	result = append(result, salt...)
-	result = append(result, nonce...)
-	result = append(result, ciphertext...)
-	return result, nil
+	return encryptWithKey(key, plaintext)
 }
 
 // EncryptWithPassword encrypts plaintext using a master password.

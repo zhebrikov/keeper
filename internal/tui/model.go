@@ -11,6 +11,8 @@ import (
 
 	pb "github.com/zhebrikov/gophkeeper/api/gen/gophkeeper/v1"
 	gkclient "github.com/zhebrikov/gophkeeper/internal/client"
+	"github.com/zhebrikov/gophkeeper/internal/format"
+	"github.com/zhebrikov/gophkeeper/internal/secretutil"
 )
 
 type screen int
@@ -34,7 +36,7 @@ type secretItem struct {
 }
 
 func (i secretItem) Title() string       { return i.secret.GetName() }
-func (i secretItem) Description() string { return secretTypeName(i.secret.GetType()) }
+func (i secretItem) Description() string { return secretutil.SecretTypeName(i.secret.GetType()) }
 func (i secretItem) FilterValue() string { return i.secret.GetName() }
 
 type model struct {
@@ -206,7 +208,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.screen = screenList
 			return m, nil
 		}
-		plaintext := formatSecretData(msg.secret.GetType(), msg.plaintext)
+		plaintext := secretutil.FormatSecretData(msg.secret.GetType(), msg.plaintext)
 		if m.editAfterLoad {
 			m.editAfterLoad = false
 			m.openForm(formEdit, msg.secret, plaintext)
@@ -347,11 +349,11 @@ func (m model) viewDetail() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render(m.detailSecret.GetName()) + "\n\n")
 	b.WriteString(detailLine("ID", m.detailSecret.GetId()) + "\n")
-	b.WriteString(detailLine("Type", secretTypeName(m.detailSecret.GetType())) + "\n")
+	b.WriteString(detailLine("Type", secretutil.SecretTypeName(m.detailSecret.GetType())) + "\n")
 	b.WriteString(detailLine("Metadata", m.detailSecret.GetMetadata()) + "\n")
 	b.WriteString(detailLine("Version", fmt.Sprintf("%d", m.detailSecret.GetVersion())) + "\n")
-	b.WriteString(detailLine("Updated", formatUnix(m.detailSecret.GetUpdatedAt())) + "\n")
-	b.WriteString(detailLine("Data", truncate(m.detailPlaintext, 200)) + "\n")
+	b.WriteString(detailLine("Updated", format.UnixTimestamp(m.detailSecret.GetUpdatedAt())) + "\n")
+	b.WriteString(detailLine("Data", format.Truncate(m.detailPlaintext, 200)) + "\n")
 	b.WriteString(footerHelp("esc: back", "e: edit", "d: delete"))
 	return b.String()
 }
@@ -568,7 +570,7 @@ func (m *model) openForm(mode string, secret *pb.SecretResponse, plaintext strin
 		m.editingID = secret.GetId()
 		m.editingVersion = secret.GetVersion()
 		m.editingType = secret.GetType()
-		m.formInputs[0].SetValue(secretTypeName(secret.GetType()))
+		m.formInputs[0].SetValue(secretutil.SecretTypeName(secret.GetType()))
 		m.formInputs[1].SetValue(secret.GetName())
 		m.formInputs[2].SetValue(plaintext)
 		m.formInputs[3].SetValue(secret.GetMetadata())
@@ -580,7 +582,7 @@ func (m *model) openForm(mode string, secret *pb.SecretResponse, plaintext strin
 }
 
 func (m model) submitForm() (model, tea.Cmd) {
-	typ := parseSecretType(m.formInputs[0].Value())
+	typ := secretutil.ParseSecretType(m.formInputs[0].Value())
 	name := strings.TrimSpace(m.formInputs[1].Value())
 	data := m.formInputs[2].Value()
 	metadata := m.formInputs[3].Value()

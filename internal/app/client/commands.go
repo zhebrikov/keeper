@@ -2,16 +2,16 @@ package client
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"os"
-	"strings"
 	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/zhebrikov/gophkeeper/internal/config"
 	"github.com/zhebrikov/gophkeeper/internal/crypto"
+	"github.com/zhebrikov/gophkeeper/internal/format"
+	"github.com/zhebrikov/gophkeeper/internal/secretutil"
 
 	pb "github.com/zhebrikov/gophkeeper/api/gen/gophkeeper/v1"
 )
@@ -130,8 +130,8 @@ func newListCmd(ctx context.Context, cfg config.ClientConfig) *cobra.Command {
 					continue
 				}
 				fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n",
-					s.GetId(), secretTypeName(s.GetType()), s.GetName(), s.GetVersion(),
-					formatUnix(s.GetUpdatedAt()),
+					s.GetId(), secretutil.SecretTypeName(s.GetType()), s.GetName(), s.GetVersion(),
+					format.UnixTimestamp(s.GetUpdatedAt()),
 				)
 			}
 			_ = w.Flush()
@@ -159,11 +159,11 @@ func newGetCmd(ctx context.Context, cfg config.ClientConfig) *cobra.Command {
 			exitOnError(err)
 
 			fmt.Printf("ID:       %s\n", secret.GetId())
-			fmt.Printf("Type:     %s\n", secretTypeName(secret.GetType()))
+			fmt.Printf("Type:     %s\n", secretutil.SecretTypeName(secret.GetType()))
 			fmt.Printf("Name:     %s\n", secret.GetName())
 			fmt.Printf("Metadata: %s\n", secret.GetMetadata())
 			fmt.Printf("Version:  %d\n", secret.GetVersion())
-			fmt.Printf("Data:     %s\n", formatSecretData(secret.GetType(), plaintext))
+			fmt.Printf("Data:     %s\n", secretutil.FormatSecretData(secret.GetType(), plaintext))
 		},
 	}
 }
@@ -202,7 +202,7 @@ func newAddCmd(ctx context.Context, cfg config.ClientConfig) *cobra.Command {
 			exitOnError(err)
 
 			_, err = api.CreateSecret(ctx, &pb.CreateSecretRequest{
-				Type:          parseSecretType(secretType),
+				Type:          secretutil.ParseSecretType(secretType),
 				Name:          name,
 				EncryptedData: encrypted,
 				Metadata:      metadata,
@@ -283,52 +283,4 @@ func newDeleteCmd(ctx context.Context, cfg config.ClientConfig) *cobra.Command {
 			fmt.Println("Secret deleted")
 		},
 	}
-}
-
-func parseSecretType(raw string) pb.SecretType {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "credential", "login":
-		return pb.SecretType_SECRET_TYPE_CREDENTIAL
-	case "text":
-		return pb.SecretType_SECRET_TYPE_TEXT
-	case "binary":
-		return pb.SecretType_SECRET_TYPE_BINARY
-	case "card":
-		return pb.SecretType_SECRET_TYPE_CARD
-	case "otp":
-		return pb.SecretType_SECRET_TYPE_OTP
-	default:
-		return pb.SecretType_SECRET_TYPE_TEXT
-	}
-}
-
-func secretTypeName(t pb.SecretType) string {
-	switch t {
-	case pb.SecretType_SECRET_TYPE_CREDENTIAL:
-		return "credential"
-	case pb.SecretType_SECRET_TYPE_TEXT:
-		return "text"
-	case pb.SecretType_SECRET_TYPE_BINARY:
-		return "binary"
-	case pb.SecretType_SECRET_TYPE_CARD:
-		return "card"
-	case pb.SecretType_SECRET_TYPE_OTP:
-		return "otp"
-	default:
-		return "unknown"
-	}
-}
-
-func formatSecretData(t pb.SecretType, data []byte) string {
-	if t == pb.SecretType_SECRET_TYPE_BINARY {
-		return base64.StdEncoding.EncodeToString(data)
-	}
-	return string(data)
-}
-
-func formatUnix(ts int64) string {
-	if ts == 0 {
-		return "-"
-	}
-	return fmt.Sprintf("%d", ts)
 }
